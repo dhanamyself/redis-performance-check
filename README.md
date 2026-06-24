@@ -21,30 +21,84 @@ reports** you can open or share.
 - Network access from this machine to your Redis endpoint(s) on the TLS port (Azure Managed Redis default **10000**)
 - An access key (password) for the instance
 
-## Run
+## Quick start — run locally against your Azure Managed Redis
+
+There is **no Redis config baked into the build** — you enter the instance details in
+the web UI at runtime, so the only setup is starting the app.
 
 ```bash
+cd redis-performance-check
 mvn spring-boot:run
-# or
+# or build a jar and run it:
 mvn -DskipTests package && java -jar target/redis-performance-check-1.0.0.jar
 ```
 
-Then open **http://localhost:8080**.
+Open **http://localhost:8080** and fill in your instance details (next section).
 
-## Using the UI
+### Where to get your Azure Managed Redis details
 
-1. **Primary endpoint** — host, port (10000), access key, TLS on.
-2. *(Optional)* **Replica/secondary endpoint** — set this to enable geo-replication
-   lag measurement. For active-active geo-replication, point it at the other region's
-   endpoint. Leave blank to skip.
+In the **Azure Portal → your Azure Managed Redis resource**:
+
+| UI field | Where to find it in Azure | Example |
+|---|---|---|
+| **Host** | Overview → *Endpoint / Host name* | `mycache.eastus.redis.azure.net` |
+| **Port** | Overview (TLS/SSL port) — Azure Managed Redis uses **10000** | `10000` |
+| **Access key / password** | *Authentication* (or *Access keys*) → **Primary** key | `AbCd…=` |
+| **Use TLS/SSL** | Leave **ON** — Azure Managed Redis requires TLS | ☑ |
+| **Replica host** *(optional)* | The **secondary region's** endpoint of your geo-replication group (Active geo-replication). Leave blank to skip replication-lag. | `mycache-2.westus.redis.azure.net` |
+
+> Azure CLI alternative:
+> ```bash
+> az redisenterprise show -g <resource-group> -n <cache-name> --query "{host:hostName}"
+> az redisenterprise database list-keys -g <resource-group> --cluster-name <cache-name> --query primaryKey -o tsv
+> ```
+
+Make sure this machine can reach the endpoint: the instance's **firewall / private
+endpoint / VNet** rules must allow your client IP on the TLS port.
+
+```bash
+# connectivity sanity check from your machine
+nc -vz mycache.eastus.redis.azure.net 10000
+```
+
+### Step-by-step in the UI
+
+1. **Primary endpoint** — paste Host, Port `10000`, the **Primary access key**, keep **TLS on**.
+2. *(Optional)* **Replica / secondary endpoint** — paste the secondary-region host to
+   measure geo-replication lag; for active-active, point it at the other region.
+   Leave blank to skip.
 3. **Load shape** — duration, warmup, concurrency (threads), read/write ratio,
-   keyspace size, session TTL.
+   keyspace size, session TTL. *Start modest:* 16 threads / 30 s.
 4. **Payload sizes** — tick the session-JSON sizes to sweep, or add custom KB values.
 5. **Probes** — toggle availability and replication probes and their intervals.
-6. **Test connection** to validate, then **Start performance test**.
+6. Click **Test connection** (confirms it reaches Redis and prints version/role/uptime),
+   then **Start performance test**.
 
 Results stream into the page as each payload size completes. When the run finishes a
 self-contained HTML report is written to `./reports/` and linked under **Saved reports**.
+
+> **Want representative latency?** Run this app from inside Azure (a VM in the **same or
+> peer region** as the cache). From your laptop the numbers include your home/office
+> internet path, not just the service.
+
+### Try it locally first (no Azure needed)
+
+You can validate the whole flow against a local Redis before pointing at Azure:
+
+```bash
+redis-server --port 6379 --save "" --appendonly no --daemonize yes
+```
+
+Then in the UI use Host `localhost`, Port `6379`, **TLS off**, blank password (set the
+replica host to `localhost`/`6379` too if you want to exercise the replication probe).
+
+### Run the unit tests
+
+```bash
+mvn test
+```
+
+This runs without any Redis instance (payload sizing, INFO parsing, latency percentiles).
 
 ## Reports
 
