@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Azure Managed Redis — Performance Check</title>
+<link rel="stylesheet" href="/styles.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="layout">
+  <!-- ============ CONFIG SIDEBAR ============ -->
+  <aside class="sidebar">
+    <div class="brand">Redis Performance Check<small>Azure Managed Redis · geo-replicated · session JSON</small></div>
+
+    <form id="cfgForm">
+      <fieldset>
+        <legend>Primary endpoint</legend>
+        <label>Host</label>
+        <input type="text" id="primaryHost" placeholder="mycache.region.redis.azure.net" autocomplete="off">
+        <div class="row">
+          <div><label>Port</label><input type="number" id="primaryPort" value="10000"></div>
+          <div><label>Connect timeout (ms)</label><input type="number" id="connectTimeoutMs" value="10000"></div>
+        </div>
+        <label>Access key / password</label>
+        <input type="password" id="password" placeholder="primary access key" autocomplete="off">
+        <div class="inline" style="margin-top:8px;">
+          <input type="checkbox" id="useSsl" checked><label for="useSsl">Use TLS/SSL (required for Azure Managed Redis)</label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Replica / secondary endpoint (geo-replication lag)</legend>
+        <label>Replica host <span class="hint">(leave blank to skip replication test)</span></label>
+        <input type="text" id="replicaHost" placeholder="secondary-region.redis.azure.net" autocomplete="off">
+        <div class="row">
+          <div><label>Replica port</label><input type="number" id="replicaPort" value="10000"></div>
+          <div><label>Replica key <span class="hint">(blank = same)</span></label><input type="password" id="replicaPassword" autocomplete="off"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Load shape</legend>
+        <div class="row">
+          <div><label>Duration (s)</label><input type="number" id="durationSeconds" value="30"></div>
+          <div><label>Warmup (s)</label><input type="number" id="warmupSeconds" value="5"></div>
+        </div>
+        <div class="row">
+          <div><label>Concurrency (threads)</label><input type="number" id="concurrency" value="16"></div>
+          <div><label>Read ratio (%)</label><input type="number" id="readRatioPercent" value="80" min="0" max="100"></div>
+        </div>
+        <div class="row">
+          <div><label>Keyspace size</label><input type="number" id="keyspaceSize" value="10000"></div>
+          <div><label>Session TTL (s, 0=none)</label><input type="number" id="sessionTtlSeconds" value="1800"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Payload sizes (session JSON)</legend>
+        <div class="hint">Select sizes to sweep — one sub-run each.</div>
+        <div class="checks" id="payloadChecks">
+          <label class="chk"><input type="checkbox" value="1" checked>1 KB</label>
+          <label class="chk"><input type="checkbox" value="10" checked>10 KB</label>
+          <label class="chk"><input type="checkbox" value="50">50 KB</label>
+          <label class="chk"><input type="checkbox" value="100" checked>100 KB</label>
+          <label class="chk"><input type="checkbox" value="256">256 KB</label>
+          <label class="chk"><input type="checkbox" value="512">512 KB</label>
+          <label class="chk"><input type="checkbox" value="1024">1 MB</label>
+        </div>
+        <label style="margin-top:10px;">Custom sizes (KB, comma-separated)</label>
+        <input type="text" id="customSizes" placeholder="e.g. 5, 25, 2048">
+      </fieldset>
+
+      <fieldset>
+        <legend>Probes</legend>
+        <div class="inline"><input type="checkbox" id="availabilityProbeEnabled" checked><label for="availabilityProbeEnabled">Availability / uptime probe</label></div>
+        <label>Availability ping interval (ms)</label>
+        <input type="number" id="availabilityProbeIntervalMs" value="500">
+        <div class="inline" style="margin-top:10px;"><input type="checkbox" id="replicationProbeEnabled" checked><label for="replicationProbeEnabled">Replication lag probe (needs replica)</label></div>
+        <div class="row">
+          <div><label>Repl. interval (ms)</label><input type="number" id="replicationProbeIntervalMs" value="1000"></div>
+          <div><label>Repl. timeout (ms)</label><input type="number" id="replicationTimeoutMs" value="5000"></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Run label</legend>
+        <input type="text" id="label" value="redis-perf-run">
+      </fieldset>
+
+      <button type="button" class="btn-secondary" id="btnTest">Test connection</button>
+      <div class="conn-result" id="connResult"></div>
+      <button type="submit" class="btn-primary" id="btnStart">▶ Start performance test</button>
+    </form>
+  </aside>
+
+  <!-- ============ RESULTS MAIN ============ -->
+  <main class="main">
+    <div id="liveStatus"></div>
+    <div id="results"><div class="empty">Configure a test on the left and press <b>Start performance test</b>.<br>Results render here live and are saved as a standalone HTML report.</div></div>
+
+    <div class="card">
+      <h2>Saved reports</h2>
+      <ul class="reports-list" id="reportsList"><li class="muted">none yet</li></ul>
+    </div>
+  </main>
+</div>
+
+<script src="/render.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

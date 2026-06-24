@@ -1,0 +1,18 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: redis-performance-check
+  mvc:
+    async:
+      request-timeout: -1   # long-running test endpoints stream/poll; never time out the request
+
+# Where generated HTML reports are written. Created on startup if missing.
+redisperf:
+  reports-dir: ./reports
+
+logging:
+  level:
+    com.azure.redisperf: INFO
+    io.lettuce.core: WARN
